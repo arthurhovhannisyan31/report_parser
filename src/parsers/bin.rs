@@ -1,5 +1,5 @@
 use crate::errors::{ParsingError, SerializeError};
-use crate::{BankRecord, BankRecordParser, Status, TxType};
+use crate::record::{BankRecord, BankRecordParser, Status, TxType};
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 

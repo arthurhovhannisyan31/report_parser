@@ -1,8 +1,6 @@
+use crate::constants::{record_field, RECORD_LINES_NUMBER};
 use crate::errors::{ParsingError, SerializeError};
-use crate::{
-  BankRecord, BankRecordParser, RECORD_LINES_NUMBER, Status, TxType,
-  record_field,
-};
+use crate::record::{BankRecord, BankRecordParser, Status, TxType};
 use std::io;
 use std::io::{BufRead, ErrorKind, Write};
 use std::str::FromStr;

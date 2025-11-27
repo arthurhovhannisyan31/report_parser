@@ -1,6 +1,6 @@
-use report_parser::BankRecordParser;
 use report_parser::errors::ParsingError;
 use report_parser::parsers::csv::CsvReportParser;
+use report_parser::record::BankRecordParser;
 use std::fs::File;
 use std::io::BufReader;
 
