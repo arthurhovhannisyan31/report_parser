@@ -6,6 +6,7 @@ use std::io::BufReader;
 
 fn main() -> Result<(), ParsingError> {
   let f = File::open("./report_files/records_example.txt")?;
+
   let mut reader = BufReader::new(f);
 
   let records = TxtReportParser::from_read(&mut reader)?;

@@ -1,4 +1,4 @@
-use crate::constants::{RECORD_LINES_NUMBER, record_field};
+use crate::constants::{record_field, RECORD_LINES_NUMBER};
 use crate::errors::{ParsingError, SerializeError};
 use crate::record::{BankRecord, BankRecordParser, Status, TxType};
 use std::io;
@@ -39,7 +39,8 @@ impl BankRecordParser for CsvReportParser {
             bank_record.tx_id = field_value.parse::<u64>()?;
           }
           record_field::TX_TYPE => {
-            bank_record.tx_type = TxType::from_str(field_value)?;
+            bank_record.tx_type = TxType::from_str(field_value)
+              .map_err(ParsingError::ParseTxType)?;
           }
           record_field::FROM_USER_ID => {
             bank_record.from_user_id = field_value.parse::<u64>()?;
@@ -68,6 +69,7 @@ impl BankRecordParser for CsvReportParser {
 
     Ok(records)
   }
+
   fn write_to<W: Write>(
     &mut self,
     _writer: &mut W,
@@ -75,3 +77,28 @@ impl BankRecordParser for CsvReportParser {
     todo!()
   }
 }
+
+// #[cfg(test)]
+// mod csv_parser_test {
+//   // TODO Use cursor
+//
+//   #[test]
+//   fn test_valid_input() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_record_missing_column() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_record_extra_column() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_empty_line() {
+//     todo!()
+//   }
+// }

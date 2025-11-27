@@ -1,5 +1,5 @@
 use crate::constants;
-use crate::errors::{ParsingError, SerializeError};
+use crate::errors::{ParsingError, SerializeError, TxTypeError};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{BufRead, ErrorKind, Write};
@@ -17,7 +17,6 @@ pub struct BankRecord {
   pub description: String,
 }
 
-// TODO Delete clone
 #[derive(Debug, Default, Clone)]
 pub enum TxType {
   #[default]
@@ -26,7 +25,6 @@ pub enum TxType {
   Withdrawal,
 }
 
-// TODO Delete clone
 #[derive(Debug, Default, Clone)]
 pub enum Status {
   #[default]
@@ -51,14 +49,14 @@ pub trait BankRecordParser {
 }
 
 impl FromStr for TxType {
-  type Err = String; // TODO Replace with proper type
+  type Err = TxTypeError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     match s {
       constants::tx_type::DEPOSIT => Ok(TxType::Deposit),
       constants::tx_type::TRANSFER => Ok(TxType::Transfer),
       constants::tx_type::WITHDRAWAL => Ok(TxType::Withdrawal),
-      _ => Err(format!("Unknown type: {}", s)),
+      _ => Err(TxTypeError::InvalidSting(s.to_string())),
     }
   }
 }
@@ -74,14 +72,14 @@ impl Display for TxType {
 }
 
 impl TryFrom<u8> for TxType {
-  type Error = (); // TODO Add enum error for TxType
+  type Error = TxTypeError; // TODO Add enum error for TxType
 
   fn try_from(v: u8) -> Result<Self, Self::Error> {
     match v {
       0 => Ok(TxType::Deposit),
       1 => Ok(TxType::Transfer),
       2 => Ok(TxType::Withdrawal),
-      _ => Err(()),
+      n => Err(TxTypeError::InvalidNumber(n)),
     }
   }
 }

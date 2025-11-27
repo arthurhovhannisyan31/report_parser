@@ -1,4 +1,4 @@
-use crate::constants::{RECORD_LINES_NUMBER, record_field};
+use crate::constants::{record_field, RECORD_LINES_NUMBER};
 use crate::errors::{ParsingError, SerializeError};
 use crate::record::{BankRecord, BankRecordParser, Status, TxType};
 use std::io;
@@ -81,7 +81,8 @@ impl BankRecordParser for TxtReportParser {
           bank_record.tx_id = field_value.parse::<u64>()?;
         }
         record_field::TX_TYPE => {
-          bank_record.tx_type = TxType::from_str(field_value)?;
+          bank_record.tx_type =
+            TxType::from_str(field_value).map_err(ParsingError::ParseTxType)?;
         }
         record_field::FROM_USER_ID => {
           bank_record.from_user_id = field_value.parse::<u64>()?;
@@ -131,6 +132,7 @@ impl BankRecordParser for TxtReportParser {
 
     Ok(records)
   }
+
   fn write_to<W: Write>(
     &mut self,
     _writer: &mut W,
@@ -138,3 +140,43 @@ impl BankRecordParser for TxtReportParser {
     todo!()
   }
 }
+
+//# Record 1000 (DEPOSIT)
+// AMOUNT: 100000
+// FROM_USER_ID: 0
+// TO_USER_ID: 3314635390654657431
+// TX_TYPE: DEPOSIT
+// DESCRIPTION: "Record number 1000"
+// TX_ID: 1000000000000999
+// STATUS: FAILURE
+// TIMESTAMP: 1633096800000
+
+// #[cfg(test)]
+// mod txt_parser_test {
+//   // TODO Use cursor
+//
+//   #[test]
+//   fn test_valid_input() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_missing_record_middle_line() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_missing_file_last_line() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_extra_record_line() {
+//     todo!()
+//   }
+//
+//   #[test]
+//   fn test_extra_empty_line() {
+//     todo!()
+//   }
+// }
