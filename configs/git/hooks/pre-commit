@@ -4,4 +4,4 @@
 
 printf "⚠️ Run pre-commit checks\n\n"
 
-validate "cargo check"
+validate "cargo check" "cargo fmt"
