@@ -1,17 +1,21 @@
 use report_parser::errors::ParsingError;
-use report_parser::parsers::csv::CsvReportParser;
-use report_parser::record::BankRecordParser;
+use report_parser::parsers::csv::CsvRecord;
+use report_parser::record::BankRecordSerDe;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader};
 
 fn main() -> Result<(), ParsingError> {
   let f = File::open("./report_files/records_example.csv")?;
   let mut reader = BufReader::new(f);
+  let mut count = 0;
 
-  let records = CsvReportParser::from_read(&mut reader)?;
+  let mut header = String::new();
+  reader.read_line(&mut header)?;
 
-  println!("{records:#?}");
-  println!("{}", records.len());
+  while let Ok(record) = CsvRecord::from_read(&mut reader) {
+    count += 1;
+  }
+  println!("{:#?}", count);
 
   Ok(())
 }

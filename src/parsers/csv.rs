@@ -1,79 +1,79 @@
 use crate::constants::{RECORD_LINES_NUMBER, record_field};
 use crate::errors::{ParsingError, SerializeError};
-use crate::record::{BankRecord, BankRecordParser, Status, TxType};
+use crate::record::{BankRecord, BankRecordSerDe, Status, TxType};
 use std::io;
 use std::io::{BufRead, ErrorKind, Write};
 use std::str::FromStr;
 
 pub struct CsvReportParser;
+pub struct CsvRecord(pub BankRecord);
 
-impl BankRecordParser for CsvReportParser {
-  fn from_read<R: BufRead>(
-    reader: &mut R,
-  ) -> Result<Vec<BankRecord>, ParsingError> {
-    let mut records: Vec<BankRecord> = vec![];
+const CVS_HEADERS: &str =
+  "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
 
-    let mut lines = reader.lines();
+impl BankRecordSerDe for CsvRecord {
+  fn from_read<R: BufRead>(buffer: &mut R) -> Result<BankRecord, ParsingError> {
+    let mut lines = buffer.lines();
+    let mut bank_record = BankRecord::new();
 
-    let first_line = lines.next();
-    let headers = first_line.unwrap()?;
-    let column_names: Vec<&str> = headers.split(',').collect();
+    let line = lines.next().ok_or_else(|| {
+      ParsingError::Custom("EOF: File has no lines to read".to_string())
+    })?;
+    let line = line?;
 
-    for (idx, str) in lines.map_while(Result::ok).enumerate() {
-      let mut bank_record = BankRecord::new();
-      let values: Vec<&str> = str.split(',').collect();
-      let zip_iter = column_names.iter().zip(values);
+    let column_names: Vec<&str> = CVS_HEADERS.split(',').collect();
+    let values: Vec<&str> = line.split(',').collect();
 
-      let columns_len = zip_iter.len();
+    let zip_iter = column_names.iter().zip(values);
+    let columns_len = zip_iter.len();
 
-      if columns_len != RECORD_LINES_NUMBER {
-        return Err(ParsingError::IO(io::Error::new(
-          ErrorKind::InvalidData,
-          format!("Line: {}; Wrong number of columns in row: {str}", idx + 1,),
-        )));
-      }
-
-      for (&field_name, field_value) in zip_iter {
-        match field_name {
-          record_field::TX_ID => {
-            bank_record.tx_id = field_value.parse::<u64>()?;
-          }
-          record_field::TX_TYPE => {
-            bank_record.tx_type = TxType::from_str(field_value)
-              .map_err(ParsingError::ParseTxType)?;
-          }
-          record_field::FROM_USER_ID => {
-            bank_record.from_user_id = field_value.parse::<u64>()?;
-          }
-          record_field::TO_USER_ID => {
-            bank_record.to_user_id = field_value.parse::<u64>()?;
-          }
-          record_field::AMOUNT => {
-            bank_record.amount = field_value.parse::<i64>()?;
-          }
-          record_field::TIMESTAMP => {
-            bank_record.timestamp = field_value.parse::<u64>()?;
-          }
-          record_field::STATUS => {
-            bank_record.status = Status::from_str(field_value)?;
-          }
-          record_field::DESCRIPTION => {
-            bank_record.description = field_value.replace('"', "");
-          }
-          _ => (),
-        }
-      }
-
-      records.push(bank_record);
+    if columns_len != RECORD_LINES_NUMBER {
+      return Err(ParsingError::IO(io::Error::new(
+        ErrorKind::InvalidData,
+        format!("Wrong number of columns in row: {line}"),
+      )));
     }
 
-    Ok(records)
-  }
+    for (&field_name, field_value) in zip_iter {
+      match field_name {
+        record_field::TX_ID => {
+          bank_record.tx_id = field_value.parse::<u64>()?;
+        }
+        record_field::TX_TYPE => {
+          bank_record.tx_type =
+            TxType::from_str(field_value).map_err(ParsingError::ParseTxType)?;
+        }
+        record_field::FROM_USER_ID => {
+          bank_record.from_user_id = field_value.parse::<u64>()?;
+        }
+        record_field::TO_USER_ID => {
+          bank_record.to_user_id = field_value.parse::<u64>()?;
+        }
+        record_field::AMOUNT => {
+          bank_record.amount = field_value.parse::<i64>()?;
+        }
+        record_field::TIMESTAMP => {
+          bank_record.timestamp = field_value.parse::<u64>()?;
+        }
+        record_field::STATUS => {
+          bank_record.status = Status::from_str(field_value)?;
+        }
+        record_field::DESCRIPTION => {
+          bank_record.description = field_value.replace('"', "");
+        }
+        _ => (),
+      }
+    }
 
+    Ok(bank_record)
+  }
   fn write_to<W: Write>(
     &mut self,
-    _writer: &mut W,
+    buffer: &mut W,
   ) -> Result<(), SerializeError> {
+    // Write the header line
+
+    // writeln!(buffer, "# Record {} ({})", tx_id_10k_mod, self.0.tx_type)?;
     todo!()
   }
 }

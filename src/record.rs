@@ -5,7 +5,7 @@ use std::io;
 use std::io::{BufRead, ErrorKind, Write};
 use std::str::FromStr;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct BankRecord {
   pub tx_id: u64,
   pub tx_type: TxType,
@@ -17,7 +17,7 @@ pub struct BankRecord {
   pub description: String,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub enum TxType {
   #[default]
   Deposit,
@@ -25,7 +25,7 @@ pub enum TxType {
   Withdrawal,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub enum Status {
   #[default]
   Success,
@@ -39,12 +39,11 @@ impl BankRecord {
   }
 }
 
-pub trait BankRecordParser {
-  fn from_read<R: BufRead>(_r: &mut R)
-  -> Result<Vec<BankRecord>, ParsingError>;
+pub trait BankRecordSerDe {
+  fn from_read<R: BufRead>(buffer: &mut R) -> Result<BankRecord, ParsingError>;
   fn write_to<W: Write>(
     &mut self,
-    _writer: &mut W,
+    buffer: &mut W,
   ) -> Result<(), SerializeError>;
 }
 

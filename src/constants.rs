@@ -1,4 +1,4 @@
-pub static RECORD_LINES_NUMBER: usize = 8;
+pub const RECORD_LINES_NUMBER: usize = 8;
 
 pub mod tx_type {
   pub const DEPOSIT: &str = "DEPOSIT";

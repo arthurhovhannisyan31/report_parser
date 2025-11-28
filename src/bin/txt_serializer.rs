@@ -2,18 +2,19 @@ use report_parser::errors::ParsingError;
 use report_parser::parsers::txt::TxtRecord;
 use report_parser::record::BankRecordSerDe;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter, Write};
 
 fn main() -> Result<(), ParsingError> {
   let f = File::open("./report_files/records_example.txt")?;
   let mut reader = BufReader::new(f);
-  let mut count = 0;
+
+  let mut write_buf = BufWriter::new(File::create("foo.txt")?);
 
   while let Ok(record) = TxtRecord::from_read(&mut reader) {
-    count += 1;
+    let _ = TxtRecord(record).write_to(&mut write_buf);
   }
 
-  println!("{:#?}", count);
+  write_buf.flush()?;
 
   Ok(())
 }

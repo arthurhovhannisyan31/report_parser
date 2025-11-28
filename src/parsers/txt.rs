@@ -1,25 +1,19 @@
 use crate::constants::{RECORD_LINES_NUMBER, record_field};
 use crate::errors::{ParsingError, SerializeError};
-use crate::record::{BankRecord, BankRecordParser, Status, TxType};
+use crate::record::{BankRecord, BankRecordSerDe, Status, TxType};
 use std::io;
 use std::io::{BufRead, ErrorKind, Write};
 use std::str::FromStr;
 
 pub struct TxtReportParser;
+pub struct TxtRecord(pub BankRecord);
 
-impl BankRecordParser for TxtReportParser {
-  fn from_read<R: BufRead>(
-    reader: &mut R,
-  ) -> Result<Vec<BankRecord>, ParsingError> {
-    let mut records: Vec<BankRecord> = vec![];
+impl BankRecordSerDe for TxtRecord {
+  fn from_read<R: BufRead>(buffer: &mut R) -> Result<BankRecord, ParsingError> {
     let mut bank_record = BankRecord::new();
-
-    let mut file_lines_count: usize = 0;
     let mut record_lines_count: usize = 0;
 
-    for line in reader.lines() {
-      file_lines_count += 1;
-
+    for line in buffer.lines() {
       let line = line?;
 
       if line.starts_with("#") {
@@ -27,26 +21,25 @@ impl BankRecordParser for TxtReportParser {
       }
 
       if line.is_empty() {
-        if record_lines_count == 0 {
-          // redundant empty line in file or EOF
-          break;
+        match record_lines_count {
+          0 => {
+            // empty leading line is allowed
+            continue;
+          }
+          1..RECORD_LINES_NUMBER => {
+            return Err(ParsingError::IO(io::Error::new(
+              ErrorKind::UnexpectedEof,
+              format!(
+                "Bank record should have at least {RECORD_LINES_NUMBER} lines"
+              ),
+            )));
+          }
+          _ => {
+            return Err(ParsingError::Custom(format!(
+              "Invalid record data, should have {RECORD_LINES_NUMBER} lines"
+            )));
+          }
         }
-
-        // Empty line withing record lines
-        if (1..RECORD_LINES_NUMBER).contains(&record_lines_count) {
-          return Err(ParsingError::IO(io::Error::new(
-            ErrorKind::UnexpectedEof,
-            format!(
-              "2 Line: {file_lines_count}; Bank record should have at least {RECORD_LINES_NUMBER} lines"
-            ),
-          )));
-        }
-
-        // record_lines_count is 8
-        // valid empty line between records
-        record_lines_count = 0;
-
-        continue;
       }
 
       record_lines_count += 1;
@@ -55,9 +48,7 @@ impl BankRecordParser for TxtReportParser {
       if record_lines_count > RECORD_LINES_NUMBER {
         return Err(ParsingError::IO(io::Error::new(
           ErrorKind::UnexpectedEof,
-          format!(
-            "Line: {file_lines_count}; Bank record has more than {RECORD_LINES_NUMBER} lines"
-          ),
+          format!("Bank record has more than {RECORD_LINES_NUMBER} lines"),
         )));
       }
 
@@ -69,7 +60,7 @@ impl BankRecordParser for TxtReportParser {
       if field_name.is_none() || field_value.is_none() {
         return Err(ParsingError::IO(io::Error::new(
           ErrorKind::InvalidData,
-          format!("Line: {file_lines_count}; Failed parsing record line"),
+          "Failed parsing record line",
         )));
       }
 
@@ -105,56 +96,64 @@ impl BankRecordParser for TxtReportParser {
         unknown_field => {
           return Err(ParsingError::IO(io::Error::new(
             ErrorKind::InvalidData,
-            format!(
-              "Line: {file_lines_count}; Unknown record field: {unknown_field}"
-            ),
+            format!("Unknown record field: {unknown_field}"),
           )));
         }
       }
 
       if record_lines_count == RECORD_LINES_NUMBER {
-        let record_clone = bank_record.clone();
-
-        records.push(record_clone);
-        bank_record = BankRecord::new();
+        return Ok(bank_record);
       }
     }
 
-    if (1..RECORD_LINES_NUMBER).contains(&record_lines_count) {
-      // Last line ended unexpectedly
-      return Err(ParsingError::IO(io::Error::new(
-        ErrorKind::UnexpectedEof,
-        format!(
-          "2 Line: {file_lines_count}; Bank record should have at least {RECORD_LINES_NUMBER} lines"
-        ),
-      )));
-    }
-
-    Ok(records)
+    Err(ParsingError::IO(io::Error::new(
+      ErrorKind::UnexpectedEof,
+      format!("Bank record should have at least {RECORD_LINES_NUMBER} lines"),
+    )))
   }
-
   fn write_to<W: Write>(
     &mut self,
-    _writer: &mut W,
+    buffer: &mut W,
   ) -> Result<(), SerializeError> {
-    todo!()
+    let tx_id_10k_mod = self.0.tx_id % 10000 + 1;
+
+    // Leading comment line
+    writeln!(buffer, "# Record {} ({})", tx_id_10k_mod, self.0.tx_type)?;
+    writeln!(buffer, "{}: {}", record_field::TX_ID, self.0.tx_id)?;
+    writeln!(buffer, "{}: {}", record_field::TX_TYPE, self.0.tx_type)?;
+    writeln!(
+      buffer,
+      "{}: {}",
+      record_field::FROM_USER_ID,
+      self.0.from_user_id
+    )?;
+    writeln!(
+      buffer,
+      "{}: {}",
+      record_field::TO_USER_ID,
+      self.0.to_user_id
+    )?;
+    writeln!(buffer, "{}: {}", record_field::AMOUNT, self.0.amount)?;
+    writeln!(buffer, "{}: {}", record_field::TIMESTAMP, self.0.timestamp)?;
+    writeln!(buffer, "{}: {}", record_field::STATUS, self.0.status)?;
+    writeln!(
+      buffer,
+      "{}: {:?}",
+      record_field::DESCRIPTION,
+      self.0.description
+    )?;
+    // Empty line separator
+    writeln!(buffer)?;
+
+    Ok(())
   }
 }
-
-//# Record 1000 (DEPOSIT)
-// AMOUNT: 100000
-// FROM_USER_ID: 0
-// TO_USER_ID: 3314635390654657431
-// TX_TYPE: DEPOSIT
-// DESCRIPTION: "Record number 1000"
-// TX_ID: 1000000000000999
-// STATUS: FAILURE
-// TIMESTAMP: 1633096800000
 
 // #[cfg(test)]
 // mod txt_parser_test {
 //   // TODO Use cursor
 //
+
 //   #[test]
 //   fn test_valid_input() {
 //     todo!()

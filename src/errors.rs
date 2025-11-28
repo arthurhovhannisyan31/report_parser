@@ -11,11 +11,12 @@ pub enum ParsingError {
     source: io::Error,
     description: String,
   },
+  Custom(String),
 }
 
 #[derive(Debug)]
 pub enum SerializeError {
-  NotFound,
+  IO(io::Error),
 }
 
 #[derive(Debug)]
@@ -36,6 +37,7 @@ impl Display for ParsingError {
       } => {
         write!(f, "{:?}\n {:?}", description, source)
       }
+      Self::Custom(str) => write!(f, "{:?}", str),
     }
   }
 }
@@ -45,11 +47,12 @@ impl std::error::Error for ParsingError {
     match self {
       Self::IO(err) => Some(err),
       Self::ParseInt(err) => Some(err),
-      Self::ParseTxType(err) => None,
+      Self::ParseTxType(_err) => None,
       Self::ParseBin {
         source,
         description,
       } => Some(source),
+      Self::Custom(_str) => None,
     }
   }
 }
@@ -82,5 +85,27 @@ impl Display for TxTypeError {
         write!(f, "Invalid number transaction type: {:?}", n)
       }
     }
+  }
+}
+
+impl Display for SerializeError {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::IO(err) => write!(f, "{:?}", err),
+    }
+  }
+}
+
+impl std::error::Error for SerializeError {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    match self {
+      Self::IO(err) => Some(err),
+    }
+  }
+}
+
+impl From<io::Error> for SerializeError {
+  fn from(err: io::Error) -> Self {
+    Self::IO(err)
   }
 }
