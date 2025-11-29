@@ -17,20 +17,20 @@ pub struct BankRecord {
   pub description: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum TxType {
   #[default]
-  Deposit,
-  Transfer,
-  Withdrawal,
+  Deposit = 0,
+  Transfer = 1,
+  Withdrawal = 2,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum Status {
   #[default]
-  Success,
-  Failure,
-  Pending,
+  Success = 0,
+  Failure = 1,
+  Pending = 2,
 }
 
 impl BankRecord {
