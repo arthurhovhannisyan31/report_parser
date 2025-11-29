@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() -> Result<(), ParsingError> {
-  let f = File::open("./report_files/records_example.csv")?;
+  let f = File::open("./mocks/records_example.csv")?;
   let mut reader = BufReader::new(f);
   let mut count = 0;
 

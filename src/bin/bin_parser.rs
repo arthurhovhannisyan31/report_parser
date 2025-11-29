@@ -7,7 +7,7 @@ use std::io::BufReader;
 pub const RECORD_HEADER: &[u8; 4] = b"YPBN";
 
 fn main() -> Result<(), ParsingError> {
-  let f = File::open("./report_files/records_example.bin")?;
+  let f = File::open("./mocks/records_example.bin")?;
   let mut reader = BufReader::new(f);
   let mut count = 0;
 

@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 
 fn main() -> Result<(), ParsingError> {
-  let f = File::open("./report_files/records_example.txt")?;
+  let f = File::open("./mocks/records_example.txt")?;
   let mut reader = BufReader::new(f);
 
   let mut write_buf = BufWriter::new(File::create("foo.txt")?);
