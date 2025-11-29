@@ -1,21 +1,23 @@
 use report_parser::errors::ParsingError;
-use report_parser::parsers::csv::CsvRecord;
+use report_parser::parsers::csv::{CVS_HEADERS, CsvRecord};
 use report_parser::record::BankRecordSerDe;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 
 fn main() -> Result<(), ParsingError> {
   let f = File::open("./mocks/records_example.csv")?;
   let mut reader = BufReader::new(f);
-  let mut count = 0;
-
   let mut header = String::new();
+  let mut write_buf = BufWriter::new(File::create("./temp/records.csv")?);
+
   reader.read_line(&mut header)?;
+  writeln!(&mut write_buf, "{CVS_HEADERS}")?;
 
   while let Ok(record) = CsvRecord::from_read(&mut reader) {
-    count += 1;
+    let _ = CsvRecord(record).write_to(&mut write_buf);
   }
-  println!("{:#?}", count);
+
+  write_buf.flush()?;
 
   Ok(())
 }

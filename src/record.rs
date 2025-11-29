@@ -7,19 +7,19 @@ use std::io;
 use std::io::{BufRead, ErrorKind, Write};
 use std::str::FromStr;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct BankRecord {
   pub tx_id: u64,
   pub tx_type: TxType,
   pub from_user_id: u64,
   pub to_user_id: u64,
-  pub amount: i64,
+  pub amount: u64,
   pub timestamp: u64,
   pub status: Status,
   pub description: String,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub enum TxType {
   #[default]
   Deposit = 0,
@@ -27,7 +27,7 @@ pub enum TxType {
   Withdrawal = 2,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub enum Status {
   #[default]
   Success = 0,
@@ -80,7 +80,7 @@ impl TryFrom<u8> for TxType {
       0 => Ok(TxType::Deposit),
       1 => Ok(TxType::Transfer),
       2 => Ok(TxType::Withdrawal),
-      n => Err(TxTypeError::NotFound),
+      _ => Err(TxTypeError::NotFound),
     }
   }
 }
@@ -119,7 +119,7 @@ impl TryFrom<u8> for Status {
       0 => Ok(Status::Success),
       1 => Ok(Status::Failure),
       2 => Ok(Status::Pending),
-      v => Err(StatusTypeError::NotFound),
+      _ => Err(StatusTypeError::NotFound),
     }
   }
 }

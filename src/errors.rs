@@ -65,7 +65,7 @@ impl std::error::Error for ParsingError {
       Self::ParseUtf8(_err) => None,
       Self::ParseBin {
         source,
-        description,
+        description: _,
       } => Some(source),
       Self::Custom(_str) => None,
     }
