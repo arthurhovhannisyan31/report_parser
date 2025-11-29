@@ -1,12 +1,15 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::io;
 use std::num::ParseIntError;
+use std::string::FromUtf8Error;
 
 #[derive(Debug)]
 pub enum ParsingError {
   IO(io::Error),
   ParseInt(ParseIntError),
   ParseTxType(TxTypeError),
+  ParseStatus(StatusTypeError),
+  ParseUtf8(FromUtf8Error),
   ParseBin {
     source: io::Error,
     description: String,
@@ -23,6 +26,14 @@ pub enum SerializeError {
 pub enum TxTypeError {
   InvalidSting(String),
   InvalidNumber(u8),
+  NotFound,
+}
+
+#[derive(Debug)]
+pub enum StatusTypeError {
+  InvalidSting(String),
+  InvalidNumber(u8),
+  NotFound,
 }
 
 impl Display for ParsingError {
@@ -31,6 +42,8 @@ impl Display for ParsingError {
       Self::IO(err) => write!(f, "{:?}", err),
       Self::ParseInt(err) => write!(f, "{:?}", err),
       Self::ParseTxType(err) => write!(f, "{:?}", err),
+      Self::ParseStatus(err) => write!(f, "{:?}", err),
+      Self::ParseUtf8(err) => write!(f, "{:?}", err),
       Self::ParseBin {
         source,
         description,
@@ -48,6 +61,8 @@ impl std::error::Error for ParsingError {
       Self::IO(err) => Some(err),
       Self::ParseInt(err) => Some(err),
       Self::ParseTxType(_err) => None,
+      Self::ParseStatus(_err) => None,
+      Self::ParseUtf8(_err) => None,
       Self::ParseBin {
         source,
         description,
@@ -70,8 +85,20 @@ impl From<ParseIntError> for ParsingError {
 }
 
 impl From<TxTypeError> for ParsingError {
-  fn from(value: TxTypeError) -> Self {
-    Self::ParseTxType(value)
+  fn from(err: TxTypeError) -> Self {
+    Self::ParseTxType(err)
+  }
+}
+
+impl From<StatusTypeError> for ParsingError {
+  fn from(err: StatusTypeError) -> Self {
+    Self::ParseStatus(err)
+  }
+}
+
+impl From<FromUtf8Error> for ParsingError {
+  fn from(err: FromUtf8Error) -> Self {
+    Self::ParseUtf8(err)
   }
 }
 
@@ -83,6 +110,9 @@ impl Display for TxTypeError {
       }
       Self::InvalidNumber(n) => {
         write!(f, "Invalid number transaction type: {:?}", n)
+      }
+      Self::NotFound => {
+        write!(f, "Type option does not exist")
       }
     }
   }
@@ -107,5 +137,22 @@ impl std::error::Error for SerializeError {
 impl From<io::Error> for SerializeError {
   fn from(err: io::Error) -> Self {
     Self::IO(err)
+  }
+}
+
+// TODO extract to derive
+impl Display for StatusTypeError {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::InvalidSting(s) => {
+        write!(f, "Invalid string transaction type: {:?}", s)
+      }
+      Self::InvalidNumber(n) => {
+        write!(f, "Invalid number transaction type: {:?}", n)
+      }
+      Self::NotFound => {
+        write!(f, "Type option does not exist")
+      }
+    }
   }
 }

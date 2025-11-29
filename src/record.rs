@@ -1,5 +1,7 @@
 use crate::constants;
-use crate::errors::{ParsingError, SerializeError, TxTypeError};
+use crate::errors::{
+  ParsingError, SerializeError, StatusTypeError, TxTypeError,
+};
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{BufRead, ErrorKind, Write};
@@ -78,7 +80,7 @@ impl TryFrom<u8> for TxType {
       0 => Ok(TxType::Deposit),
       1 => Ok(TxType::Transfer),
       2 => Ok(TxType::Withdrawal),
-      n => Err(TxTypeError::InvalidNumber(n)),
+      n => Err(TxTypeError::NotFound),
     }
   }
 }
@@ -110,14 +112,14 @@ impl Display for Status {
 }
 
 impl TryFrom<u8> for Status {
-  type Error = (); // TODO Add enum error for Status
+  type Error = StatusTypeError;
 
   fn try_from(v: u8) -> Result<Self, Self::Error> {
     match v {
       0 => Ok(Status::Success),
       1 => Ok(Status::Failure),
       2 => Ok(Status::Pending),
-      _ => Err(()),
+      v => Err(StatusTypeError::NotFound),
     }
   }
 }

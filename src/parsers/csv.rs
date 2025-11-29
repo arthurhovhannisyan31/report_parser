@@ -8,7 +8,7 @@ use std::str::FromStr;
 pub struct CsvReportParser;
 pub struct CsvRecord(pub BankRecord);
 
-const CVS_HEADERS: &str =
+pub const CVS_HEADERS: &str =
   "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
 
 impl BankRecordSerDe for CsvRecord {
@@ -71,10 +71,20 @@ impl BankRecordSerDe for CsvRecord {
     &mut self,
     buffer: &mut W,
   ) -> Result<(), SerializeError> {
-    // Write the header line
+    let columns: Vec<String> = vec![
+      self.0.tx_id.to_string(),
+      self.0.tx_type.to_string(),
+      self.0.from_user_id.to_string(),
+      self.0.to_user_id.to_string(),
+      self.0.amount.to_string(),
+      self.0.timestamp.to_string(),
+      self.0.status.to_string(),
+      format!("{:?}", self.0.description.to_string()),
+    ];
 
-    // writeln!(buffer, "# Record {} ({})", tx_id_10k_mod, self.0.tx_type)?;
-    todo!()
+    writeln!(buffer, "{}", columns.join(","))?;
+
+    Ok(())
   }
 }
 
