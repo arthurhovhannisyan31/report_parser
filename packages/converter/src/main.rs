@@ -10,7 +10,8 @@
 use crate::configs::{CliArgs, DataFormat};
 use crate::errors::ConverterErrors;
 use clap::Parser;
-use parser::parsers::{BinRecord, CsvRecord, TxtRecord, CVS_HEADERS};
+use parser::parsers::csv::CVS_HEADERS;
+use parser::parsers::{BinRecord, CsvRecord, TxtRecord};
 use parser::record::{BankRecord, BankRecordParser};
 use std::fs::File;
 use std::io;

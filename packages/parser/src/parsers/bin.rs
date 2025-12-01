@@ -20,6 +20,10 @@ impl BankRecordParser for BinRecord {
       if record_header_buf == *RECORD_HEADER {
         break;
       }
+      // Reading bytes failing here, need to save consumed bytes
+      // Move one with 2 pointers and buffer
+      // Push byte, check if it starts with 89
+      // if so check every next byte and reset vec to 0 if not match expeted result and move on checking for 89
 
       // RECORD_HEADER is lost, moving on with 1 byte step
       let mut step = [0u8; 1];
