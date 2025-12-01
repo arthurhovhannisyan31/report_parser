@@ -1,15 +1,17 @@
+use crate::errors::ConverterErrors;
 use clap::{Parser, ValueEnum};
-use std::io;
-use std::io::ErrorKind;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Debug, ValueEnum, Clone)]
 pub enum DataFormat {
-  Binary,
+  Bin,
   Csv,
-  Text,
+  Txt,
 }
+
+pub(crate) const EXTENSION_WHITELIST: &[&str] = &["bin", "csv", "txt"];
 
 #[derive(Debug, Parser)]
 #[command(version, about, next_line_help = true)]
@@ -22,13 +24,19 @@ pub struct CliArgs {
   pub output_format: DataFormat,
 }
 
-fn path_validation(path: &str) -> Result<PathBuf, io::Error> {
+pub fn path_validation(path: &str) -> Result<PathBuf, ConverterErrors> {
   let path =
     PathBuf::from_str(path).expect("Failed reading provided path value");
 
   if path.exists() {
-    Ok(path)
+    if let Some(extension) = path.extension().and_then(OsStr::to_str) {
+      if EXTENSION_WHITELIST.contains(&extension) {
+        return Ok(path);
+      }
+    }
+
+    Err(ConverterErrors::InvalidSourceFile)
   } else {
-    Err(io::Error::new(ErrorKind::NotFound, "File path not found"))
+    Err(ConverterErrors::NotFound)
   }
 }
