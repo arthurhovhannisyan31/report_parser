@@ -7,7 +7,6 @@ use std::io;
 pub enum ConverterErrors {
   IO(io::Error),
   InvalidSourceFile,
-  NotFound,
 }
 
 impl Display for ConverterErrors {
@@ -21,9 +20,6 @@ impl Display for ConverterErrors {
           crate::configs::EXTENSION_WHITELIST
         )
       }
-      Self::NotFound => {
-        write!(f, "File not found",)
-      }
     }
   }
 }
@@ -32,7 +28,6 @@ impl Error for ConverterErrors {
   fn source(&self) -> Option<&(dyn Error + 'static)> {
     match self {
       Self::IO(err) => Some(err),
-      Self::NotFound => None,
       Self::InvalidSourceFile => None,
     }
   }

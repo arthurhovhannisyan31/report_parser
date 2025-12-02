@@ -1,10 +1,12 @@
 use crate::errors::ConverterErrors;
 use clap::{Parser, ValueEnum};
 use std::ffi::OsStr;
+use std::io;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[derive(Debug, ValueEnum, Clone)]
+#[derive(Debug, ValueEnum, Clone, PartialEq)]
 pub enum DataFormat {
   Bin,
   Csv,
@@ -28,15 +30,18 @@ pub fn path_validation(path: &str) -> Result<PathBuf, ConverterErrors> {
   let path =
     PathBuf::from_str(path).expect("Failed reading provided path value");
 
-  if path.exists() {
-    if let Some(extension) = path.extension().and_then(OsStr::to_str) {
-      if EXTENSION_WHITELIST.contains(&extension) {
-        return Ok(path);
-      }
-    }
-
-    Err(ConverterErrors::InvalidSourceFile)
-  } else {
-    Err(ConverterErrors::NotFound)
+  if !path.exists() {
+    return Err(ConverterErrors::IO(io::Error::new(
+      ErrorKind::NotFound,
+      format!("Failed reading provided file path: {path:?}"),
+    )));
   }
+
+  if let Some(extension) = path.extension().and_then(OsStr::to_str) {
+    if EXTENSION_WHITELIST.contains(&extension) {
+      return Ok(path);
+    }
+  }
+
+  Err(ConverterErrors::InvalidSourceFile)
 }
