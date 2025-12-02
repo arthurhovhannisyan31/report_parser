@@ -201,6 +201,43 @@ mod bin_parser_test {
   }
 
   #[test]
+  fn test_parse_shifted_header_key() {
+    let mut buff: Vec<u8> = vec![];
+    // String quotes need to be escaped, values are written as is
+    let description = String::from("\"Record number 1\"");
+
+    buff.extend_from_slice("\"Hello Kitty\"".as_bytes());
+    buff.extend_from_slice(RECORD_HEADER);
+    buff.extend_from_slice(&63u32.to_be_bytes()[..]);
+    buff.extend_from_slice(&1000000000000000u64.to_be_bytes()[..]);
+    buff.extend_from_slice(&(TxType::Deposit as u8).to_be_bytes()[..]);
+    buff.extend_from_slice(&0u64.to_be_bytes()[..]);
+    buff.extend_from_slice(&9223372036854775807u64.to_be_bytes()[..]);
+    buff.extend_from_slice(&100u64.to_be_bytes()[..]);
+    buff.extend_from_slice(&1633036860000u64.to_be_bytes()[..]);
+    buff.extend_from_slice(&(Status::Failure as u8).to_be_bytes()[..]);
+    buff.extend_from_slice(&(description.len() as u32).to_be_bytes()[..]);
+    buff.extend_from_slice(description.as_bytes());
+
+    let mut buff = Cursor::new(buff);
+    let rec_result = BinRecord::from_read(&mut buff);
+
+    assert!(rec_result.is_ok());
+
+    let rec = rec_result.unwrap();
+
+    assert_eq!(rec.tx_id, 1000000000000000u64);
+    assert_eq!(rec.tx_type, TxType::Deposit);
+    assert_eq!(rec.from_user_id, 0u64);
+    assert_eq!(rec.to_user_id, 9223372036854775807u64);
+    assert_eq!(rec.amount, 100u64);
+    assert_eq!(rec.timestamp, 1633036860000u64);
+    assert_eq!(rec.timestamp, 1633036860000u64);
+    assert_eq!(rec.status, Status::Failure);
+    assert_eq!(rec.description, description);
+  }
+
+  #[test]
   fn test_parse_missing_header_key() {
     let mut buff: Vec<u8> = vec![];
 
