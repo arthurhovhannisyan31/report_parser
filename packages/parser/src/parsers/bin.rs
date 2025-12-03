@@ -6,7 +6,7 @@ use std::io::{BufRead, IoSlice, IoSliceMut, Write};
 
 pub struct BinRecord(pub BankRecord);
 
-static RECORD_HEADER: &[u8; 4] = b"YPBN";
+pub static RECORD_HEADER: &[u8; 4] = b"YPBN";
 
 impl BankRecordParser for BinRecord {
   fn from_read<R: BufRead>(buffer: &mut R) -> Result<BankRecord, ParsingError> {
@@ -68,6 +68,11 @@ impl BankRecordParser for BinRecord {
 
     buffer.read_exact(&mut desc_buf)?;
 
+    let description =
+      String::try_from(desc_buf.clone()).unwrap_or("".to_string());
+    // Escaped quotes are not needed in model
+    let normalized_description = description.replace("\"", "");
+
     Ok(BankRecord {
       tx_id: u64::from_be_bytes(tx_id),
       tx_type: TxType::try_from(u8::from_be_bytes(tx_type))?,
@@ -76,31 +81,38 @@ impl BankRecordParser for BinRecord {
       amount: u64::from_be_bytes(amount),
       timestamp: u64::from_be_bytes(timestamp),
       status: Status::try_from(u8::from_be_bytes(status))?,
-      description: String::try_from(desc_buf).unwrap_or("".to_string()),
+      description: normalized_description,
     })
   }
   fn write_to<W: Write>(
     &mut self,
     buffer: &mut W,
   ) -> Result<(), SerializeError> {
-    let tx_id = self.0.tx_id.to_be_bytes();
-    let tx_type = (self.0.tx_type.clone() as u8).to_be_bytes();
-    let from_user_id = self.0.from_user_id.to_be_bytes();
-    let to_user_id = self.0.to_user_id.to_be_bytes();
-    let amount = self.0.amount.to_be_bytes();
-    let timestamp = self.0.timestamp.to_be_bytes();
-    let status = (self.0.status.clone() as u8).to_be_bytes();
-    let description_len = (self.0.description.len() as u32).to_be_bytes();
+    let tx_id_buf = self.0.tx_id.to_be_bytes();
+    let tx_type_buf = (self.0.tx_type.clone() as u8).to_be_bytes();
+    let from_user_id_buf = self.0.from_user_id.to_be_bytes();
+    let to_user_id_buf = self.0.to_user_id.to_be_bytes();
+    let amount_buf = self.0.amount.to_be_bytes();
+    let timestamp_buf = self.0.timestamp.to_be_bytes();
+    let status_buf = (self.0.status.clone() as u8).to_be_bytes();
+    let description_len = self.0.description.len();
+    // Need to add 2 bytes for escaped quotes, to prevent data model layout shift
+    let adjusted_description_len = if description_len == 0 {
+      0
+    } else {
+      description_len + 2
+    };
+    let description_len_buf = (adjusted_description_len as u32).to_be_bytes();
 
     let bufs = [
-      IoSlice::new(&tx_id),
-      IoSlice::new(&tx_type),
-      IoSlice::new(&from_user_id),
-      IoSlice::new(&to_user_id),
-      IoSlice::new(&amount),
-      IoSlice::new(&timestamp),
-      IoSlice::new(&status),
-      IoSlice::new(&description_len),
+      IoSlice::new(&tx_id_buf),
+      IoSlice::new(&tx_type_buf),
+      IoSlice::new(&from_user_id_buf),
+      IoSlice::new(&to_user_id_buf),
+      IoSlice::new(&amount_buf),
+      IoSlice::new(&timestamp_buf),
+      IoSlice::new(&status_buf),
+      IoSlice::new(&description_len_buf),
     ];
 
     let record_size: u32 = (bufs.iter().map(|slice| slice.len()).sum::<usize>()
@@ -119,7 +131,12 @@ impl BankRecordParser for BinRecord {
       )));
     }
 
-    buffer.write_all(self.0.description.as_bytes())?;
+    if description_len > 0 {
+      // Write escaped quotes to record model
+      write!(buffer, "\"")?;
+      buffer.write_all(self.0.description.as_bytes())?;
+      write!(buffer, "\"")?;
+    }
 
     Ok(())
   }
@@ -135,7 +152,7 @@ mod bin_parser_test {
   fn test_parse_valid_input() {
     let mut buff: Vec<u8> = vec![];
     // String quotes need to be escaped, values are written as is
-    let description = String::from("\"Record number 1\"");
+    let description = String::from("Record number 1");
 
     buff.extend_from_slice(RECORD_HEADER);
     buff.extend_from_slice(&63u32.to_be_bytes()[..]);
@@ -146,8 +163,10 @@ mod bin_parser_test {
     buff.extend_from_slice(&100u64.to_be_bytes()[..]);
     buff.extend_from_slice(&1633036860000u64.to_be_bytes()[..]);
     buff.extend_from_slice(&(Status::Failure as u8).to_be_bytes()[..]);
-    buff.extend_from_slice(&(description.len() as u32).to_be_bytes()[..]);
+    buff.extend_from_slice(&((description.len() + 2) as u32).to_be_bytes()[..]);
+    buff.extend_from_slice("\"".as_bytes());
     buff.extend_from_slice(description.as_bytes());
+    buff.extend_from_slice("\"".as_bytes());
 
     let mut buff = Cursor::new(buff);
     let rec_result = BinRecord::from_read(&mut buff);
@@ -204,7 +223,7 @@ mod bin_parser_test {
   fn test_parse_shifted_header_key() {
     let mut buff: Vec<u8> = vec![];
     // String quotes need to be escaped, values are written as is
-    let description = String::from("\"Record number 1\"");
+    let description = String::from("Record number 1");
 
     buff.extend_from_slice("\"Hello Kitty\"".as_bytes());
     buff.extend_from_slice(RECORD_HEADER);
@@ -216,8 +235,10 @@ mod bin_parser_test {
     buff.extend_from_slice(&100u64.to_be_bytes()[..]);
     buff.extend_from_slice(&1633036860000u64.to_be_bytes()[..]);
     buff.extend_from_slice(&(Status::Failure as u8).to_be_bytes()[..]);
-    buff.extend_from_slice(&(description.len() as u32).to_be_bytes()[..]);
+    buff.extend_from_slice(&((description.len() + 2) as u32).to_be_bytes()[..]);
+    buff.extend_from_slice("\"".as_bytes());
     buff.extend_from_slice(description.as_bytes());
+    buff.extend_from_slice("\"".as_bytes());
 
     let mut buff = Cursor::new(buff);
     let rec_result = BinRecord::from_read(&mut buff);
@@ -262,7 +283,7 @@ mod bin_parser_test {
   fn test_parse_data_layout_shift() {
     let mut buff: Vec<u8> = vec![];
     // String quotes need to be escaped, values are written as is
-    let description = String::from("\"Record number 1\"");
+    let description = String::from("Record number 1");
 
     buff.extend_from_slice(RECORD_HEADER);
     buff.extend_from_slice(&63u32.to_be_bytes()[..]);
@@ -296,11 +317,10 @@ mod bin_parser_test {
   #[test]
   fn test_serialize_record() {
     let mut assert_buffer: Vec<u8> = vec![];
-    // String quotes need to be escaped, values are written as is
-    let description = String::from("\"Record number 1\"");
+    let description = String::from("Record number 1");
 
     assert_buffer.extend_from_slice(RECORD_HEADER);
-    assert_buffer.extend_from_slice(&63u32.to_be_bytes()[..]);
+    assert_buffer.extend_from_slice(&61u32.to_be_bytes()[..]);
     assert_buffer.extend_from_slice(&1000000000000000u64.to_be_bytes()[..]);
     assert_buffer.extend_from_slice(&(TxType::Deposit as u8).to_be_bytes()[..]);
     assert_buffer.extend_from_slice(&0u64.to_be_bytes()[..]);
@@ -309,11 +329,13 @@ mod bin_parser_test {
     assert_buffer.extend_from_slice(&1633036860000u64.to_be_bytes()[..]);
     assert_buffer.extend_from_slice(&(Status::Failure as u8).to_be_bytes()[..]);
     assert_buffer
-      .extend_from_slice(&(description.len() as u32).to_be_bytes()[..]);
+      .extend_from_slice(&((description.len() + 2) as u32).to_be_bytes()[..]);
+    assert_buffer.extend_from_slice("\"".as_bytes());
     assert_buffer.extend_from_slice(description.as_bytes());
+    assert_buffer.extend_from_slice("\"".as_bytes());
 
     let vec: Vec<u8> = vec![];
-    let mut buffer = Cursor::new(vec);
+    let mut write_buffer = Cursor::new(vec);
 
     let record = BankRecord {
       tx_id: 1000000000000000,
@@ -323,14 +345,13 @@ mod bin_parser_test {
       amount: 100,
       timestamp: 1633036860000,
       status: Status::Failure,
-      // String quotes need to be escaped, values are written as is
-      description: String::from("\"Record number 1\""),
+      description: String::from("Record number 1"),
     };
 
-    let _ = BinRecord(record).write_to(&mut buffer);
-    buffer.flush().unwrap();
+    let _ = BinRecord(record).write_to(&mut write_buffer);
+    write_buffer.flush().unwrap();
 
-    assert_eq!(buffer.into_inner(), assert_buffer);
+    assert_eq!(write_buffer.into_inner(), assert_buffer);
   }
 
   #[test]
