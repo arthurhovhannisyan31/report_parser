@@ -89,8 +89,10 @@ fn compare(
     records2_set.insert(record);
   }
 
-  let file1_diff_count = records1_set.difference(&records2_set).count();
-  let file2_diff_count = records2_set.difference(&records1_set).count();
+  let file1_diff = records1_set.difference(&records2_set);
+  let file2_diff = records2_set.difference(&records1_set);
+  let file1_diff_count = file1_diff.clone().count();
+  let file2_diff_count = file2_diff.clone().count();
 
   if file1_diff_count == 0 && file2_diff_count == 0 {
     writeln!(
@@ -105,7 +107,7 @@ fn compare(
     )?;
     writeln!(buf_writer)?;
 
-    for record in records1_set.difference(&records2_set) {
+    for record in file1_diff {
       writeln!(
         buf_writer,
         "File: {:?}\nRecord id: {} ",
@@ -114,7 +116,7 @@ fn compare(
       .expect("Failed writing to stdout");
       writeln!(buf_writer)?;
     }
-    for record in records2_set.difference(&records1_set) {
+    for record in file2_diff {
       writeln!(
         buf_writer,
         "File: {:?}\nRecord id: {} ",
