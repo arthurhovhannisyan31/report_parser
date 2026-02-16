@@ -5,5 +5,5 @@ edition = "2024"
 description = "Report files converter"
 
 [dependencies]
-clap = { version = "4.5.54", features = ["derive"] }
+clap = { version = "4.5.58", features = ["derive"] }
 parser = { path = "../parser" }
