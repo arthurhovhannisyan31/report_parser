@@ -73,7 +73,7 @@ impl Display for TxType {
 }
 
 impl TryFrom<u8> for TxType {
-  type Error = TxTypeError; // TODO Add enum error for TxType
+  type Error = TxTypeError;
 
   fn try_from(v: u8) -> Result<Self, Self::Error> {
     match v {
